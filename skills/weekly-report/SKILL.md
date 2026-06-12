@@ -31,7 +31,7 @@ description: 根据 git 仓库中指定 author 的本周 commit 自动生成技�
 3. **解析 commit 列表**:提取 hash、日期、conventional commit 的 type/scope、subject。
 4. **按 scope 聚合**:把 commit 按 `scope` 字段分组,作为 1.1"重点项目进度"的行。
 5. **按 type 计数**:对 1.2"日常技术工作"做数量统计(见下表)。
-6. **填充模板**:见 [references/template.md](references/template.md)。主观章节(1.3、2.x、3、4.x、5)直接保留模板原文,不做修改,仅在周报末尾追加"📝 以下章节为模板原文,请根据实际情况补充完整"的提示。
+6. **填充模板**:见 [references/template.md](references/template.md)。
 7. **渲染输出**:把填充后的完整周报以 markdown 输出到对话。
 
 ## Commit Type → 周报章节 映射
@@ -48,7 +48,6 @@ description: 根据 git 仓库中指定 author 的本周 commit 自动生成技�
 **注意**:
 - "代码评审"次数无 commit 数据可推,固定留空。
 - "代码覆盖率提升"等量化指标无法从 commit 推,留空。
-- 主观章节(项目风险/下周计划/团队建设/个人成长/其他)直接保留模板原文,只追加提示让用户补全。
 
 ## 脚本输出格式
 
