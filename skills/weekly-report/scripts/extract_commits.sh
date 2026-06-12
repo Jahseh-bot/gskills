@@ -1,5 +1,8 @@
 #!/bin/bash
-# extract_commits.sh - Extract commits for a specific author in a parseable format
+# extract_commits.sh - Extract commits for a specific author in a parseable format.
+# Per-commit output includes hash, date, subject, body, and changed-file list so
+# the agent has enough signal to semantically cluster commits into projects.
+#
 # Usage: bash extract_commits.sh --author "name|email" [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--path <repo>]
 
 set -euo pipefail
@@ -20,8 +23,18 @@ Options:
   --path     Repository path (default: current directory)
 
 Output format:
-  === META === block with author/date range
-  === COMMITS === block with one line per commit: HASH|DATE|SUBJECT
+  === META === block with author/date range/repo
+  === COMMITS === block with one record per commit, framed by:
+      ===WEEKLY_COMMIT===
+      HASH:    <sha>
+      DATE:    <iso date>
+      SUBJECT: <conventional commit subject>
+      ---BODY---
+      <commit body, possibly empty or multi-line>
+      ---END_BODY---
+      ---FILES---
+      <status>\t<path>      # one line per changed file (status: A/M/D/R...)
+      ---END_FILES---
 EOF
 }
 
@@ -77,20 +90,38 @@ if ! git rev-parse --git-dir >/dev/null 2>&1; then
   exit 1
 fi
 
+REPO_ROOT=$(git rev-parse --show-toplevel)
+REPO_NAME=$(basename "$REPO_ROOT")
+
 echo "=== META ==="
 echo "AUTHOR: $AUTHOR"
 echo "SINCE: $SINCE"
 echo "UNTIL: $UNTIL"
-echo "REPO: $(pwd)"
+echo "REPO: $REPO_NAME"
+echo "REPO_PATH: $REPO_ROOT"
 echo "=== COMMITS ==="
 
-# Use --author with regex; git log treats --author as substring/regex on the author field
+# One git-log call emits both the formatted header and the --name-status file list
+# per commit. Body and file list are framed with explicit delimiters so multi-line
+# bodies can be parsed without ambiguity.
 git log \
   --author="$AUTHOR" \
   --since="$SINCE 00:00:00" \
   --until="$UNTIL 23:59:59" \
-  --pretty=format:"%H|%ai|%s" \
-  || true
+  --pretty=format:"===WEEKLY_COMMIT===%nHASH: %H%nDATE: %ai%nSUBJECT: %s%n---BODY---%n%b---END_BODY---%n---FILES---" \
+  --name-status \
+  | awk '
+      BEGIN { in_files = 0 }
+      /^===WEEKLY_COMMIT===$/ {
+        if (in_files) { print "---END_FILES---"; in_files = 0 }
+        print; next
+      }
+      /^---FILES---$/ { print; in_files = 1; next }
+      { print }
+      END {
+        if (in_files) { print "---END_FILES---" }
+      }
+    '
 
 # Trailing newline for clean output
 echo ""
